@@ -1,0 +1,23 @@
+{
+  "name": "serverless-custom-domain",
+  "version": "0.1.0",
+  "description": "Serverless plugin which creates a Custom Domain Name for the serverless service.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Icenium/serverless-custom-domain.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Icenium/serverless-custom-domain/issues"
+  },
+  "homepage": "https://github.com/Icenium/serverless-custom-domain#readme",
+  "dependencies": {
+    "aws-sdk": "2.42.0"
+  }
+}
