@@ -15,14 +15,28 @@ class RecordSetService extends ServerlessService {
 	}
 
 	async createRecordSetAsync() {
-		await this._changeRecordSetAsync("CREATE");
+		await this._changeRecordSetAsync("CREATE", async (record, hostedZoneId) => {
+			if (await this._checkIfRecordExistsAsync(record, hostedZoneId)) {
+				this.logger.log(`Record for ${record.AliasTarget.DNSName} with name ${this.config.domainName} and weight ${record.Weight} exists. It will NOT be created again.`);
+				return false;
+			} else {
+				return true;
+			}
+		});
 	}
 
 	async removeRecordSetAsync() {
-		return this._changeRecordSetAsync("DELETE");
+		return this._changeRecordSetAsync("DELETE", async (record, hostedZoneId) => {
+			if (await this._checkIfRecordExistsAsync(record, hostedZoneId)) {
+				return true;
+			} else {
+				this.logger.log(`Record for ${record.AliasTarget.DNSName} with name ${this.config.domainName} and weight ${record.Weight} does NOT exist. There is nothing to remove.`);
+				return false;
+			}
+		});
 	}
 
-	async _changeRecordSetAsync(action) {
+	async _changeRecordSetAsync(action, shouldExecuteChangeAction) {
 		const domainName = this.config.domainName;
 		const domainInfo = await this.domainNameService.getDomainNameInfoAsync(domainName);
 		if (!domainInfo) {
@@ -39,11 +53,23 @@ class RecordSetService extends ServerlessService {
 		const hostedZoneId = this._getHostedZoneId(hostedZoneInfo);
 
 		const params = this._createRecordInfo(hostedZoneId, domainInfo.distributionDomainName, action);
-		// const result = await this.provider.request("Route53", "listResourceRecordSets", {HostedZoneId: hostedZoneId});
-		const result = this.provider.request("Route53", "changeResourceRecordSets", params);
+		let result = null;
+		if (await shouldExecuteChangeAction.apply(this, [params.ChangeBatch.Changes[0].ResourceRecordSet, hostedZoneId])) {
+			result = this.provider.request("Route53", "changeResourceRecordSets", params);
+		}
 
 		this._restoreOriginalProfile();
 		return result;
+	}
+
+	async _checkIfRecordExistsAsync(record, hostedZoneId) {
+		const records = await this.provider.request("Route53", "listResourceRecordSets", { HostedZoneId: hostedZoneId });
+		return !!records.ResourceRecordSets.find(r => {
+			return r.Name === record.Name + "." &&
+				r.Weight === record.Weight &&
+				r.SetIdentifier === record.SetIdentifier &&
+				r.AliasTarget.DNSName === record.AliasTarget.DNSName + ".";
+		});
 	}
 
 	_getHostedZoneInfoAsync(hostedZoneName) {
