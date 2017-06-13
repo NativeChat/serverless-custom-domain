@@ -5,6 +5,9 @@ const AWS = require("aws-sdk");
 
 const ServerlessService = require("./serverless-service");
 let originalProfile;
+let originalAccessKeyId;
+let originalSecretAccessKey;
+let originalSessonToken;
 
 class RecordSetService extends ServerlessService {
 	constructor(serverless, options, logger, domainNameService) {
@@ -43,7 +46,11 @@ class RecordSetService extends ServerlessService {
 			throw new Error(`Custom domain name ${domainName} does NOT exist.`);
 		}
 
-		this._overrideProfile();
+		const credentials = await this._getCredentialsFromRoleAsync();
+		if (credentials) {
+			await this._overrideProfile(credentials.AccessKeyId, credentials.SecretAccessKey, credentials.SessionToken);
+		}
+
 		const hostedZoneName = this.config.hostedZoneName;
 		const hostedZoneInfo = await this._getHostedZoneInfoAsync(hostedZoneName);
 		if (!hostedZoneInfo) {
@@ -58,7 +65,10 @@ class RecordSetService extends ServerlessService {
 			result = this.provider.request("Route53", "changeResourceRecordSets", params);
 		}
 
-		this._restoreOriginalProfile();
+		if (credentials) {
+			this._restoreOriginalProfile();
+		}
+
 		return result;
 	}
 
@@ -70,6 +80,21 @@ class RecordSetService extends ServerlessService {
 				r.SetIdentifier === record.SetIdentifier &&
 				r.AliasTarget.DNSName === record.AliasTarget.DNSName + ".";
 		});
+	}
+
+	async _getCredentialsFromRoleAsync() {
+		if (!this.config.route53Role) {
+			return null;
+		}
+
+		const assumeRoleParams = {
+			RoleArn: this.config.route53Role,
+			RoleSessionName: "serverless-user"
+		};
+
+		const assumeRoleResult = await this.provider.request("STS", "assumeRole", assumeRoleParams);
+
+		return assumeRoleResult.Credentials;
 	}
 
 	_getHostedZoneInfoAsync(hostedZoneName) {
@@ -85,14 +110,24 @@ class RecordSetService extends ServerlessService {
 
 	_saveOriginalProfile() {
 		originalProfile = process.env.AWS_PROFILE;
+		originalAccessKeyId = process.env.AWS_ACCESS_KEY_ID;
+		originalSecretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
+		originalSessonToken = process.env.AWS_SESSION_TOKEN;
 	}
 
-	_overrideProfile() {
-		process.env.AWS_PROFILE = this.config.awsRoute53Profile || originalProfile;
+	_overrideProfile(accessKeyId, secretAccessKey, sessionToken) {
+		process.env.AWS_PROFILE = null;
+		process.env.AWS_ACCESS_KEY_ID = accessKeyId || originalAccessKeyId;
+		process.env.AWS_SECRET_ACCESS_KEY = secretAccessKey || originalSecretAccessKey;
+		process.env.AWS_SESSION_TOKEN = sessionToken || originalSecretAccessKey;
+
 	}
 
 	_restoreOriginalProfile() {
 		process.env.AWS_PROFILE = originalProfile;
+		process.env.AWS_ACCESS_KEY_ID = originalAccessKeyId;
+		process.env.AWS_SECRET_ACCESS_KEY = originalSecretAccessKey;
+		process.env.AWS_SESSION_TOKEN = originalSessonToken;
 	}
 
 	_createRecordInfo(hostedZoneId, distributionDomainName, action) {
