@@ -49,7 +49,7 @@ class BasePathMappingService extends ServerlessService {
 	}
 
 	async _createBasePathMappingAsync() {
-		const apiInfo = await this._getRestApiInfoAsync();
+		const apiInfo = await this._getRestApiInfoAsync(this.provider.naming.getApiGatewayName());
 		return this.provider.request("APIGateway", "createBasePathMapping", {
 			basePath: this.config.basePath,
 			domainName: this.config.domainName,
@@ -67,9 +67,28 @@ class BasePathMappingService extends ServerlessService {
 
 	}
 
-	async _getRestApiInfoAsync() {
-		const apis = await this.provider.request("APIGateway", "getRestApis")
-		return apis.items.find(a => a.name === this.provider.naming.getApiGatewayName());
+	async _getRestApiInfoAsync(apiName) {
+		return this._getRestApiInfoAsyncCore(apiName, null);
+	}
+
+	async _getRestApiInfoAsyncCore(apiName, position) {
+		const limit = 500;
+		const getApisRequest = { limit };
+
+		if (position) {
+			getApisRequest.position = position;
+		}
+
+		const apis = await this.provider.request("APIGateway", "getRestApis", getApisRequest);
+		const api = apis.items.find(a => a.name === apiName);
+
+		if (api) {
+			return api;
+		} else if (apis.items.length === limit) {
+			return await this._getRestApiInfoAsyncCore(apiName, apis.position);
+		} else {
+			return null;
+		}
 	}
 }
 
