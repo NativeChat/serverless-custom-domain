@@ -13,7 +13,7 @@ class ServerlessService {
 		this.validateConfig(this.config);
 
 		this.config.stage = this.config.stage || this.options.stage || "dev";
-		this.config.domainName = this._addPrefixToDomainName();
+		this.config.domainName = this.addPrefixToDomainName(this.config.domainName);
 	}
 
 	validateConfig(config) {
@@ -38,12 +38,12 @@ class ServerlessService {
 		return errors;
 	}
 
-	_addPrefixToDomainName() {
+	addPrefixToDomainName(domain) {
 		const domainPrefix = this.config.stage === "production" ? "" : this.config.stage + "-";
-		if (this.config.domainName.startsWith(domainPrefix)) {
-			return this.config.domainName;
+		if (domain.startsWith(domainPrefix)) {
+			return domain;
 		} else {
-			return `${domainPrefix}${this.config.domainName}`;
+			return `${domainPrefix}${domain}`;
 		}
 	}
 }

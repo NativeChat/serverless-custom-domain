@@ -13,7 +13,8 @@ class RecordSetService extends ServerlessService {
 	constructor(serverless, options, logger, domainNameService) {
 		super(serverless, options, logger);
 		this.domainNameService = domainNameService;
-		this.config.isLimited = this.options.limited;
+		this.config.canary = this.options.canary;
+		this.config.canaryDomain = super.addPrefixToDomainName(this.options.canaryDomain);
 		this._saveOriginalProfile();
 	}
 
@@ -136,9 +137,10 @@ class RecordSetService extends ServerlessService {
 		 * http://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/Route53.html#changeResourceRecordSets-property
 		 */
 		const cloudFrontDistributionHostedZoneId = "Z2FDTNDATAQYW2";
-		const weight = this.config.isLimited ? 10 : 100;
+		const weight = this.config.canary ? 10 : 100;
+		const domainName = this.config.canary ? this.config.canaryDomain : this.config.domainName;
 
-		this.logger.log(`${action} record set for ${distributionDomainName} with name ${this.config.domainName} and weight ${weight}...`);
+		this.logger.log(`${action} record set for ${distributionDomainName} with name ${domainName} and weight ${weight}...`);
 		return {
 			ChangeBatch: {
 				Changes: [{
@@ -149,13 +151,13 @@ class RecordSetService extends ServerlessService {
 							EvaluateTargetHealth: false,
 							HostedZoneId: cloudFrontDistributionHostedZoneId
 						},
-						Name: this.config.domainName,
+						Name: domainName,
 						Type: "A",
 						Weight: weight,
-						SetIdentifier: `${this.config.domainName}${this.config.isLimited ? "(Limited)" : ""}`
+						SetIdentifier: `${domainName}${this.config.cnary ? "(Canary)" : ""}`
 					}
 				}],
-				Comment: `${this.config.isLimited ? "Limited " : ""}${this.config.domainName} record set.`
+				Comment: `${this.config.canary ? "Canary " : ""}${domainName} record set.`
 			},
 			HostedZoneId: hostedZoneId
 		};
