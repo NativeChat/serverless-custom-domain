@@ -14,7 +14,6 @@ class RecordSetService extends ServerlessService {
 		super(serverless, options, logger);
 		this.domainNameService = domainNameService;
 		this.config.canary = this.options.canary;
-		this.config.canaryDomain;
 		this._saveOriginalProfile();
 	}
 
@@ -154,7 +153,7 @@ class RecordSetService extends ServerlessService {
 						Name: domainName,
 						Type: "A",
 						Weight: weight,
-						SetIdentifier: `${domainName}${this.config.cnary ? "(Canary)" : ""}`
+						SetIdentifier: `${domainName}${this.config.canary ? "-canary" : ""}`
 					}
 				}],
 				Comment: `${this.config.canary ? "Canary " : ""}${domainName} record set.`
