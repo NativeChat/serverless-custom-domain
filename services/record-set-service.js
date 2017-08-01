@@ -14,7 +14,7 @@ class RecordSetService extends ServerlessService {
 		super(serverless, options, logger);
 		this.domainNameService = domainNameService;
 		this.config.canary = this.options.canary;
-		this.config.canaryDomain = super.addPrefixToDomainName(this.options.canaryDomain);
+		this.config.canaryDomain;
 		this._saveOriginalProfile();
 	}
 
