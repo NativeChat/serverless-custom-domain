@@ -1,5 +1,6 @@
 "us strict";
 
+const AwsService = require("./lib/services/aws-service");
 const DomainNameService = require("./lib/services/domain-name-service");
 const BasePathMappingService = require("./lib/services/base-path-mapping-service");
 const RecordSetService = require("./lib/services/record-set-service");
@@ -59,23 +60,42 @@ class CustomDomainPlugin {
 	}
 
 	createDomain() {
-		const domainNameService = new DomainNameService(this.serverless, this.options, this.serverless.cli);
+		const awsService = new AwsService();
+		const domainNameService = new DomainNameService(this.serverless,
+			this.options,
+			this.serverless.cli,
+			awsService);
 		return domainNameService.createApiNameAsync();
 	}
 
 	removeDomain() {
-		const domainNameService = new DomainNameService(this.serverless, this.options, this.serverless.cli);
+		const awsService = new AwsService();
+		const domainNameService = new DomainNameService(this.serverless,
+			this.options,
+			this.serverless.cli,
+			awsService);
 		return domainNameService.removeApiNameAsync();
 	}
 
 	createRecord() {
-		const domainNameService = new DomainNameService(this.serverless, this.options, this.serverless.cli);
-		const recordSetService = new RecordSetService(this.serverless, this.options, this.serverless.cli, domainNameService);
+		const awsService = new AwsService();
+		const domainNameService = new DomainNameService(this.serverless,
+			this.options,
+			this.serverless.cli,
+			awsService);
+		const recordSetService = new RecordSetService(this.serverless,
+			this.options,
+			this.serverless.cli,
+			domainNameService);
 		return recordSetService.createRecordSetAsync();
 	}
 
 	removeRecord() {
-		const domainNameService = new DomainNameService(this.serverless, this.options, this.serverless.cli);
+		const awsService = new AwsService();
+		const domainNameService = new DomainNameService(this.serverless,
+			this.options,
+			this.serverless.cli,
+			awsService);
 		const recordSetService = new RecordSetService(this.serverless, this.options, this.serverless.cli, domainNameService);
 		return recordSetService.removeRecordSetAsync();
 	}
