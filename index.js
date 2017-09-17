@@ -65,7 +65,7 @@ class CustomDomainPlugin {
 			this.options,
 			this.serverless.cli,
 			awsService);
-		return domainNameService.createApiNameAsync();
+		return domainNameService.createDomainNameAsync();
 	}
 
 	removeDomain() {
@@ -74,7 +74,7 @@ class CustomDomainPlugin {
 			this.options,
 			this.serverless.cli,
 			awsService);
-		return domainNameService.removeApiNameAsync();
+		return domainNameService.removeDomainNameAsync();
 	}
 
 	createRecord() {

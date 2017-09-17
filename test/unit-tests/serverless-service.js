@@ -6,24 +6,17 @@ const assert = require("chai").assert;
 const ServerlessService = require("../../lib/services/serverless-service");
 const mocks = require("../mocks");
 const helpers = require("../helpers");
-
-const ValidDomainName = "domain.bg";
-
-const assertMethodIsCalled = (service, methodName, action) => {
-    const isMethodCalled = helpers.isMethodCalled(service, methodName, action);
-    assert.deepEqual(isMethodCalled, true);
-};
-
+const { ValidDomainName } = require("../constants");
 
 describe("ServerlessService", () => {
     describe("constructor", () => {
-        it("should verify the plugin config.", () => {
-            assertMethodIsCalled(ServerlessService.prototype, "validateConfig", () => {
+        it("should validate the plugin config.", async () => {
+            await helpers.assertMethodIsCalledAsync(ServerlessService, "validateConfig", () => {
                 new ServerlessService(mocks.getServerlessMock(), {});
             });
         });
-        it("should add prefix to the domain name from the config.", () => {
-            assertMethodIsCalled(ServerlessService.prototype, "addPrefixToDomainName", () => {
+        it("should add prefix to the domain name from the config.", async () => {
+            await helpers.assertMethodIsCalledAsync(ServerlessService, "addPrefixToDomainName", () => {
                 const slsMock = mocks.getServerlessMock();
                 slsMock.service.custom.customDomainConfig = {
                     domainName: ValidDomainName

@@ -4,7 +4,7 @@
   "description": "Serverless plugin which creates a Custom Domain Name for the serverless service.",
   "main": "index.js",
   "scripts": {
-    "test": "mocha"
+    "test": "MOCHAWESOME_REPORTDIR=reports/mochawesome multi='mochawesome=- html-cov=reports/coverage/coverage.html' ./node_modules/mocha/bin/mocha -r blanket --reporter mocha-multi"
   },
   "repository": {
     "type": "git",
@@ -23,7 +23,24 @@
   "devDependencies": {
     "@types/chai": "4.0.2",
     "@types/mocha": "2.2.41",
+    "blanket": "1.2.3",
     "chai": "4.1.1",
-    "mocha": "3.5.0"
+    "mocha": "2.5.3",
+    "mocha-multi": "0.11.0",
+    "mochawesome": "2.3.0"
+  },
+  "config": {
+    "blanket": {
+      "pattern": [
+        "lib/*.js"
+      ],
+      "data-cover-never": [
+        "node_modules",
+        "tests"
+      ],
+      "data-cover-reporter-options": {
+        "shortnames": true
+      }
+    }
   }
 }
