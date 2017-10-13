@@ -14,6 +14,7 @@ class ServerlessService {
 
 		this.config.stage = this.config.stage || this.options.stage || "dev";
 		this.config.domainName = this.addPrefixToDomainName(this.config.domainName);
+		this.config.customDomainName = this.config.customDomainName || this.config.domainName;
 	}
 
 	validateConfig(config) {
