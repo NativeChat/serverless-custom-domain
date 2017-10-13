@@ -8,24 +8,24 @@ class BasePathMappingService extends ServerlessService {
 	}
 
 	async createBasePathMappingAsync() {
-		const mappingInfo = await this._getMappingInfoAsync(this.config.basePath, this.config.domainName);
+		const mappingInfo = await this._getMappingInfoAsync(this.config.basePath, this.config.customDomainName);
 		if (!mappingInfo || !mappingInfo.restApiId) {
-			this.logger.log(`Creating base path mapping ${this.config.basePath} for domain name ${this.config.domainName}...`);
+			this.logger.log(`Creating base path mapping ${this.config.basePath} for domain name ${this.config.customDomainName}...`);
 			return this._createBasePathMappingAsync();
 		}
 
-		this.logger.log(`Base path mapping ${this.config.basePath} for domain name ${this.config.domainName} already exist. It will NOT be recreated.`);
+		this.logger.log(`Base path mapping ${this.config.basePath} for domain name ${this.config.customDomainName} already exist. It will NOT be recreated.`);
 		return true;
 	}
 
 	async removeBasePathMappingAsync() {
-		const mappingInfo = await this._getMappingInfoAsync(this.config.basePath, this.config.domainName);
+		const mappingInfo = await this._getMappingInfoAsync(this.config.basePath, this.config.customDomainName);
 		if (!mappingInfo || !mappingInfo.restApiId) {
-			this.logger.log(`Base path mapping ${this.config.basePath} for domain name ${this.config.domainName} does NOT exist.`);
+			this.logger.log(`Base path mapping ${this.config.basePath} for domain name ${this.config.customDomainName} does NOT exist.`);
 			return true;
 		}
 
-		this.logger.log(`Removing base path mapping ${this.config.basePath} from domain name ${this.config.domainName}...`);
+		this.logger.log(`Removing base path mapping ${this.config.basePath} from domain name ${this.config.customDomainName}...`);
 		return this._removeBasePathMappingAsync();
 	}
 
@@ -52,7 +52,7 @@ class BasePathMappingService extends ServerlessService {
 		const apiInfo = await this._getRestApiInfoAsync(this.provider.naming.getApiGatewayName());
 		return this.provider.request("APIGateway", "createBasePathMapping", {
 			basePath: this.config.basePath,
-			domainName: this.config.domainName,
+			domainName: this.config.customDomainName,
 			restApiId: apiInfo.id,
 			stage: this.config.stage
 		});
@@ -62,7 +62,7 @@ class BasePathMappingService extends ServerlessService {
 	_removeBasePathMappingAsync() {
 		return this.provider.request("APIGateway", "deleteBasePathMapping", {
 			basePath: this.config.basePath,
-			domainName: this.config.domainName
+			domainName: this.config.customDomainName
 		});
 
 	}
