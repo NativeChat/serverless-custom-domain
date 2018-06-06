@@ -45,7 +45,7 @@ class DomainNameService extends ServerlessService {
 	}
 
 	async getDomainNameInfoAsync(domainName) {
-		const domains = await this.provider.request("APIGateway", "getDomainNames");
+		const domains = await this.provider.request("APIGateway", "getDomainNames", {});
 		if (!domains || !domains.items) {
 			return null;
 		}
@@ -63,7 +63,7 @@ class DomainNameService extends ServerlessService {
 		const region = "us-east-1";
 		this.options.region = region;
 
-		const certificates = await this.provider.request("ACM", "listCertificates");
+		const certificates = await this.provider.request("ACM", "listCertificates", {});
 		this.options.region = this._originalRegion;
 		if (!certificates || !certificates.CertificateSummaryList || !certificates.CertificateSummaryList.length) {
 			return null;

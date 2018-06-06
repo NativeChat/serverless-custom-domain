@@ -98,7 +98,7 @@ class RecordSetService extends ServerlessService {
 	}
 
 	_getHostedZoneInfoAsync(hostedZoneName) {
-		return this.provider.request("Route53", "listHostedZones")
+		return this.provider.request("Route53", "listHostedZones", {})
 			.then(zones => {
 				if (!zones || !zones.HostedZones || !zones.HostedZones.length) {
 					return null;
