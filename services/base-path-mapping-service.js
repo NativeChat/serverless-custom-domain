@@ -1,5 +1,7 @@
 "use strict";
 
+const AWS = require("aws-sdk");
+
 const ServerlessService = require("./serverless-service");
 
 class BasePathMappingService extends ServerlessService {
@@ -49,11 +51,16 @@ class BasePathMappingService extends ServerlessService {
 	}
 
 	async _createBasePathMappingAsync() {
-		const apiInfo = await this._getRestApiInfoAsync(this.provider.naming.getApiGatewayName());
+		const apiName = this.provider.naming.getApiGatewayName();
+		const apiInfo = await this._getApiInfoAsync(apiName);
+		if (!apiInfo) {
+			throw this.serverless.classes.Error(`Can't find API with name: ${apiName}`);
+		}
+
 		return this.provider.request("APIGateway", "createBasePathMapping", {
 			basePath: this.config.basePath,
 			domainName: this.config.customDomainName,
-			restApiId: apiInfo.id,
+			restApiId: apiInfo.id || apiInfo.ApiId,
 			stage: this.config.stage
 		});
 
@@ -67,8 +74,13 @@ class BasePathMappingService extends ServerlessService {
 
 	}
 
-	async _getRestApiInfoAsync(apiName) {
-		return this._getRestApiInfoAsyncCore(apiName, null);
+	async _getApiInfoAsync(apiName) {
+		let result = await this._getRestApiInfoAsyncCore(apiName, null);
+		if (!result) {
+			result = await this._getWebsocketApiInfoAsyncCore(apiName, null);
+		}
+
+		return result;
 	}
 
 	async _getRestApiInfoAsyncCore(apiName, position) {
@@ -86,6 +98,27 @@ class BasePathMappingService extends ServerlessService {
 			return api;
 		} else if (apis.items.length === limit) {
 			return await this._getRestApiInfoAsyncCore(apiName, apis.position);
+		} else {
+			return null;
+		}
+	}
+
+	async _getWebsocketApiInfoAsyncCore(apiName, nextToken) {
+		const maxResults = "500";
+		const getApisRequest = { MaxResults: maxResults };
+
+		if (nextToken) {
+			getApisRequest.NextToken = nextToken;
+		}
+
+		const service = new AWS.ApiGatewayV2(this.provider.getCredentials())
+		const apis = await service.getApis(getApisRequest).promise();
+		const api = apis.Items.find(a => a.Name === apiName);
+
+		if (api) {
+			return api;
+		} else if (apis.NextToken) {
+			return await this._getRestApiInfoAsyncCore(apiName, apis.NextToken);
 		} else {
 			return null;
 		}
