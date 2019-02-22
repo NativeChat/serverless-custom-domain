@@ -4,17 +4,13 @@ const childProcess = require("child_process");
 const AWS = require("aws-sdk");
 
 const ServerlessService = require("./serverless-service");
-let originalProfile;
-let originalAccessKeyId;
-let originalSecretAccessKey;
-let originalSessonToken;
 
 class RecordSetService extends ServerlessService {
 	constructor(serverless, options, logger, domainNameService) {
 		super(serverless, options, logger);
 		this.domainNameService = domainNameService;
 		this.config.canary = this.options.canary;
-		this._saveOriginalProfile();
+		this._route53Service = null;
 	}
 
 	async createRecordSetAsync() {
@@ -46,11 +42,6 @@ class RecordSetService extends ServerlessService {
 			throw new Error(`Custom domain name ${domainName} does NOT exist.`);
 		}
 
-		const credentials = await this._getCredentialsFromRoleAsync();
-		if (credentials) {
-			await this._overrideProfile(credentials.AccessKeyId, credentials.SecretAccessKey, credentials.SessionToken);
-		}
-
 		const hostedZoneName = this.config.hostedZoneName;
 		const hostedZoneInfo = await this._getHostedZoneInfoAsync(hostedZoneName);
 		if (!hostedZoneInfo) {
@@ -62,18 +53,16 @@ class RecordSetService extends ServerlessService {
 		const params = this._createRecordInfo(hostedZoneId, domainInfo.distributionDomainName, action);
 		let result = null;
 		if (await shouldExecuteChangeAction.apply(this, [params.ChangeBatch.Changes[0].ResourceRecordSet, hostedZoneId])) {
-			result = this.provider.request("Route53", "changeResourceRecordSets", params);
-		}
-
-		if (credentials) {
-			this._restoreOriginalProfile();
+			const route53 = await this._getRoute53ClientAsync();
+			result = route53.changeResourceRecordSets(params).promise();
 		}
 
 		return result;
 	}
 
 	async _checkIfRecordExistsAsync(record, hostedZoneId) {
-		const records = await this.provider.request("Route53", "listResourceRecordSets", { HostedZoneId: hostedZoneId });
+		const route53 = await this._getRoute53ClientAsync();
+		const records = await route53.listResourceRecordSets({ HostedZoneId: hostedZoneId }).promise();
 		return !!records.ResourceRecordSets.find(r => {
 			return r.Name === record.Name + "." &&
 				r.Weight === record.Weight &&
@@ -97,37 +86,14 @@ class RecordSetService extends ServerlessService {
 		return assumeRoleResult.Credentials;
 	}
 
-	_getHostedZoneInfoAsync(hostedZoneName) {
-		return this.provider.request("Route53", "listHostedZones", {})
-			.then(zones => {
-				if (!zones || !zones.HostedZones || !zones.HostedZones.length) {
-					return null;
-				}
+	async _getHostedZoneInfoAsync(hostedZoneName) {
+		const route53 = await this._getRoute53ClientAsync();
+		const zones = await route53.listHostedZones({}).promise();
+		if (!zones || !zones.HostedZones || !zones.HostedZones.length) {
+			return null;
+		}
 
-				return zones.HostedZones.find(zone => zone.Name === hostedZoneName && zone.Config.PrivateZone === !!this.config.isPrivateHostedZone);
-			});
-	}
-
-	_saveOriginalProfile() {
-		originalProfile = process.env.AWS_PROFILE;
-		originalAccessKeyId = process.env.AWS_ACCESS_KEY_ID;
-		originalSecretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
-		originalSessonToken = process.env.AWS_SESSION_TOKEN;
-	}
-
-	_overrideProfile(accessKeyId, secretAccessKey, sessionToken) {
-		process.env.AWS_PROFILE = null;
-		process.env.AWS_ACCESS_KEY_ID = accessKeyId || originalAccessKeyId;
-		process.env.AWS_SECRET_ACCESS_KEY = secretAccessKey || originalSecretAccessKey;
-		process.env.AWS_SESSION_TOKEN = sessionToken || originalSecretAccessKey;
-
-	}
-
-	_restoreOriginalProfile() {
-		process.env.AWS_PROFILE = originalProfile;
-		process.env.AWS_ACCESS_KEY_ID = originalAccessKeyId;
-		process.env.AWS_SECRET_ACCESS_KEY = originalSecretAccessKey;
-		process.env.AWS_SESSION_TOKEN = originalSessonToken;
+		return zones.HostedZones.find(zone => zone.Name === hostedZoneName && zone.Config.PrivateZone === !!this.config.isPrivateHostedZone);
 	}
 
 	_createRecordInfo(hostedZoneId, distributionDomainName, action) {
@@ -140,6 +106,7 @@ class RecordSetService extends ServerlessService {
 		const domainName = this.config.canary ? this.config.canaryDomain : this.config.domainName;
 
 		this.logger.log(`${action} record set for ${distributionDomainName} with name ${domainName} and weight ${weight}...`);
+
 		return {
 			ChangeBatch: {
 				Changes: [{
@@ -174,8 +141,21 @@ class RecordSetService extends ServerlessService {
 		return matches[1];
 	}
 
-	_setEnvVariable(variable, value) {
-		childProcess.execSync(`export ${variable}=${value}`);
+	async _getRoute53ClientAsync() {
+		if (!this._route53Service) {
+			const credentials = await this._getCredentialsFromRoleAsync();
+			const config = { credentials: {} };
+			if (credentials) {
+				config.credentials = { accessKeyId: credentials.AccessKeyId, secretAccessKey: credentials.SecretAccessKey, sessionToken: credentials.SessionToken };
+			} else {
+				const credentialsChain = new this.provider.sdk.CredentialProviderChain();
+				config.credentials = await credentialsChain.resolvePromise();
+			}
+
+			this._route53Service = new this.provider.sdk.Route53(config);
+		}
+
+		return this._route53Service;
 	}
 }
 
