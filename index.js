@@ -1,8 +1,8 @@
-"us strict";
+"use strict";
 
-const DomainNameService = require("./services/domain-name-service");
-const BasePathMappingService = require("./services/base-path-mapping-service");
-const RecordSetService = require("./services/record-set-service");
+const DomainNameService = require("./lib/services/domain-name-service");
+const BasePathMappingService = require("./lib/services/base-path-mapping-service");
+const RecordSetService = require("./lib/services/record-set-service");
 
 class CustomDomainPlugin {
 	constructor(serverless, options) {
