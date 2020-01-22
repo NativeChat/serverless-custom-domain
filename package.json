@@ -1,6 +1,6 @@
 {
   "name": "serverless-custom-domain",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "description": "Serverless plugin which creates a Custom Domain Name for the serverless service.",
   "main": "index.js",
   "scripts": {
