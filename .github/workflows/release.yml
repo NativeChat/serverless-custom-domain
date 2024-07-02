@@ -1,0 +1,61 @@
+name: release
+on:
+  push:
+    branches: [master]
+
+jobs:
+  release:
+    environment: npm-env
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+      - name: Use Node.js
+        uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8
+        with:
+          node-version: "18.x"
+      - name: Create Tag
+        id: create_tag
+        run: |
+          set -e;
+          set -x;
+
+          tag="v$(node -p "require('./package').version")";
+          git fetch --all;
+
+          if git rev-parse $tag > /dev/null 2>&1;
+          then
+              echo "The current tag is already released";
+          else
+              git config --global user.email github-actions
+              git config --global user.name github-actions
+              message=$(git log -1 --pretty=format:%s)
+              git tag -a $tag -m "$message";
+              git push origin --tags;
+              npm config set '//registry.npmjs.org/:_authToken' '${{ secrets.NPM_TOKEN }}'
+              npm install;
+              npm publish;
+
+              echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Changelog
+        if: ${{ steps.create_tag.outputs.tag }}
+        id: changelog
+        run: |
+          npm install -g generate-changelog
+          previous_tag=$(git tag --sort version:refname | tail -n 2 | head -n 1)
+          new_tag=$(git tag --sort version:refname | tail -n 1)
+
+          changelog=$(generate-changelog -t "$previous_tag..$new_tag" --file -)
+          changelog="${changelog//'%'/'%25'}"
+          changelog="${changelog//$'\n'/'%0A'}"
+          changelog="${changelog//$'\r'/'%0D'}"
+
+          echo "$changelog"
+
+          echo "changelog=$changelog" >> "$GITHUB_OUTPUT"
+      - name: Create Release
+        if: ${{ steps.create_tag.outputs.tag }}
+        id: create_release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create ${{ steps.create_tag.outputs.tag }} --title "${{ steps.create_tag.outputs.tag }}" --notes "${{ steps.changelog.outputs.changelog }}"
