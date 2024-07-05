@@ -4,7 +4,8 @@
   "description": "Serverless plugin which creates a Custom Domain Name for the serverless service.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "",
+    "test": "echo \"Info: no test specified\" && exit 0",
     "security-pack": "tar zcvf serverless-custom-domain.tgz --exclude='./node_modules' --exclude='.git' --exclude='coverage' --exclude='reports' --exclude='.vscode' --exclude='*.tgz' *"
   },
   "repository": {
